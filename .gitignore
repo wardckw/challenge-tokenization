@@ -21,3 +21,8 @@ node_modules
 
 # cli
 dist
+.vercel
+
+# challenge / deploy artifacts (local only)
+.challenge-ai/
+packages/foundry/broadcast/

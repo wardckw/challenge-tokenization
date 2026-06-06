@@ -44,6 +44,193 @@ Before you begin, you need to install the following tools:
 
 🌟 The final deliverable is an app that lets users mint and transfer NFTs and understand onchain ownership. Deploy your contracts to a testnet, then build and upload your app to a public web server. Submit the url on [SpeedRunEthereum.com](https://speedrunethereum.com)!
 
+---
+
+## ✅ Completed build (portfolio)
+
+ERC-721 NFT minting and transfer dApp: users mint unique collectibles with IPFS metadata, view their holdings, and transfer tokens to any address. Ownership is enforced onchain via the ERC-721 standard with Enumerable and URIStorage extensions.
+
+| | |
+|---|---|
+| **Live dApp** | [https://tokenization-challenge-r3ye3k0g8-wardckw-9546s-projects.vercel.app](https://tokenization-challenge-r3ye3k0g8-wardckw-9546s-projects.vercel.app) |
+| **YourCollectible (Sepolia)** | [`0x60ef75b906b8fdc9b8933fa902db12d298fae5c7`](https://sepolia.etherscan.io/address/0x60ef75b906b8fdc9b8933fa902db12d298fae5c7) |
+| **Challenge** | [Speedrun Ethereum — Tokenization](https://speedrunethereum.com/challenge/tokenization) |
+
+### What I implemented
+
+- **`YourCollectible`** — ERC-721 with `ERC721Enumerable`, `ERC721URIStorage`, and `Ownable`
+- **`mintItem(address to, string memory uri)`** — auto-incrementing `tokenIdCounter`, `_safeMint`, IPFS metadata via `_setTokenURI`
+- **`_baseURI()`** — prefixes token URIs with `https://ipfs.io/ipfs/`
+- **Inheritance overrides** — `_update`, `_increaseBalance`, `tokenURI`, `supportsInterface` resolve the diamond problem across parent contracts
+- **Frontend** — mint NFTs from predefined metadata, view holdings via `tokenOfOwnerByIndex`, transfer via `transferFrom`, browse `Transfer` events
+
+### Stack
+
+Solidity 0.8.20 · OpenZeppelin · Foundry · Scaffold-ETH 2 · Next.js · RainbowKit · Wagmi · Viem · IPFS · DaisyUI
+
+### Run locally
+
+```sh
+yarn chain    # terminal 1
+yarn deploy   # terminal 2
+yarn start    # terminal 3 → http://localhost:3000/myNFTs
+yarn test     # all checkpoint tests
+```
+
+### Deploy to testnet
+
+```sh
+yarn generate
+yarn account          # fund deployer on Sepolia
+yarn deploy --network sepolia
+yarn verify --network sepolia
+npx vercel --prod     # from repo root; Vercel Root Directory = packages/nextjs
+```
+
+### Troubleshooting: issues we hit before production
+
+These are real problems we ran into while setting up locally and deploying to Sepolia, plus how we fixed them.
+
+#### 1. `yarn chain` fails on Windows (`UNC paths are not supported`)
+
+**Symptom:** Running `yarn chain` from PowerShell on a `\\wsl.localhost\Ubuntu\...` path fails with:
+
+```
+UNC paths are not supported. Defaulting to Windows directory.
+Usage Error: No project found in /C:/Windows
+```
+
+**Cause:** Yarn/Foundry spawn `CMD.EXE`, which cannot use WSL UNC paths as a working directory.
+
+**Fix:** Run all dev commands inside **WSL (Ubuntu)**, not PowerShell on the network path:
+
+```sh
+cd ~/dev/challenge-tokenization
+yarn chain    # terminal 1 — leave running
+yarn deploy   # terminal 2
+yarn start    # terminal 3
+```
+
+In Cursor, open a terminal with profile **Ubuntu** / **WSL**, not PowerShell.
+
+---
+
+#### 2. `Address already in use (os error 98)` when starting anvil
+
+**Symptom:** `yarn chain` fails because port **8545** is already taken.
+
+**Fix:** Either reuse the existing chain (skip starting a second one) or free the port:
+
+```sh
+pkill anvil
+fuser -k 8545/tcp   # if needed
+yarn chain
+```
+
+Sanity check that the chain is up:
+
+```sh
+curl -s -X POST http://127.0.0.1:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+```
+
+---
+
+#### 3. `yarn deploy` → `Connection refused (os error 111)`
+
+**Symptom:** Deploy cannot reach `http://127.0.0.1:8545/`.
+
+**Cause:** The local blockchain is not running.
+
+**Fix:** Start `yarn chain` in **terminal 1** and wait until anvil shows `Listening on 127.0.0.1:8545`. Only then run `yarn deploy` in a **second** terminal.
+
+| Terminal | Command        | Keep running? |
+|----------|----------------|---------------|
+| 1        | `yarn chain`   | Yes           |
+| 2        | `yarn deploy`  | No (runs once)|
+| 3        | `yarn start`   | Yes           |
+
+---
+
+#### 4. Sepolia faucet: `Insufficient balance! You need at least 0.001 ETH on Ethereum Mainnet`
+
+**Symptom:** Alchemy's Sepolia faucet rejects the request.
+
+**Cause:** Alchemy often requires **mainnet ETH** in the same wallet as an anti-spam check. That is **not** Sepolia test ETH.
+
+**Fix:** Use a faucet that does not require mainnet balance, for example:
+
+- [Google Cloud Sepolia Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia)
+- [Chainlink Faucet](https://faucets.chain.link/sepolia)
+- [Infura Faucet](https://www.infura.io/faucet/sepolia)
+
+Fund the **deployer address** from `yarn account` (the keystore created with `yarn generate`), not your localhost burner wallet. Confirm balance:
+
+```sh
+yarn account
+```
+
+---
+
+#### 5. Two different `.env` files (deploy vs frontend)
+
+**Symptom:** Deploy works locally but the frontend cannot talk to Sepolia, or RPC calls fail in production.
+
+**Cause:** Foundry and Next.js read **separate** env files.
+
+| File | Used by | Key variable |
+|------|---------|--------------|
+| `packages/foundry/.env` | `yarn deploy`, `yarn verify` | `ALCHEMY_API_KEY` |
+| `packages/nextjs/.env.local` | `yarn start`, Vercel | `NEXT_PUBLIC_ALCHEMY_API_KEY` |
+
+Also set `targetNetworks: [chains.sepolia]` in `packages/nextjs/scaffold.config.ts` before shipping the frontend.
+
+**Never commit** `.env` or `.env.local` — they should stay gitignored.
+
+---
+
+#### 6. GitHub CLI auth: `missing required scope 'read:org'`
+
+**Symptom:** `gh auth login` rejects a Personal Access Token.
+
+**Fix:** Create a **new classic token** at [github.com/settings/tokens](https://github.com/settings/tokens) with scopes **`repo`**, **`read:org`**, and **`workflow`**. Or skip tokens entirely and choose **Login with a web browser** during `gh auth login`.
+
+**Note:** `sudo apt install gh` asks for your **WSL/Ubuntu user password**, not your GitHub password.
+
+---
+
+#### 7. GitHub repo missing Sepolia deploy / only one commit pushed
+
+**Symptom:** Repo is on GitHub but `deployedContracts.ts` is empty and `scaffold.config.ts` still targets localhost.
+
+**Cause:** `gh repo create --push` pushed the initial template before local Sepolia work was committed.
+
+**Fix:**
+
+```sh
+git add .
+git status   # confirm no .env files are staged
+git commit -m "Deploy YourCollectible to Sepolia and configure frontend"
+git push origin main
+```
+
+After a contract change locally, re-run `yarn deploy --network sepolia` and push again so GitHub matches production.
+
+---
+
+#### 8. Forgot keystore password from `yarn generate`
+
+**Symptom:** `yarn deploy --network sepolia` cannot decrypt the deployer keystore.
+
+**Fix:** There is no recovery. Run `yarn generate` again with a **new** keystore name, **write the password down**, fund the new address from a faucet, and deploy again.
+
+---
+
+**Localhost Faucet ≠ Sepolia faucet.** The in-app Faucet button only sends test ETH on your local chain. For testnet deploys, fund the deployer via an external Sepolia faucet.
+
+---
+
 💬 Meet other builders working on this challenge and get help in the [Challenge Telegram](https://t.me/+Y2vqXZZ_pEFhMGMx)!
 
 <details markdown='1'><summary>❓ Wondering what "tokenization" means?</summary>

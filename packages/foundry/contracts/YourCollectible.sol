@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract YourCollectible is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
     uint256 public tokenIdCounter;
 
-    constructor() ERC721("YourCollectible", "YCB") Ownable(msg.sender) { }
+    constructor() ERC721("YourCollectible", "YCB") Ownable(msg.sender) {}
 
     function _baseURI() internal pure override returns (string memory) {
         return "https://ipfs.io/ipfs/";
@@ -25,11 +25,11 @@ contract YourCollectible is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable 
 
     // Override functions from OpenZeppelin ERC721, ERC721Enumerable and ERC721URIStorage
 
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override(ERC721, ERC721Enumerable)
-        returns (address)
-    {
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal override(ERC721, ERC721Enumerable) returns (address) {
         return super._update(to, tokenId, auth);
     }
 
@@ -41,12 +41,9 @@ contract YourCollectible is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable 
         return super.tokenURI(tokenId);
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, ERC721Enumerable, ERC721URIStorage)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, ERC721Enumerable, ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }

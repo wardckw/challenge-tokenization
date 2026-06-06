@@ -33,7 +33,7 @@
     "foundry:test": "yarn workspace @se-2/foundry test",
     "foundry:verify": "yarn workspace @se-2/foundry verify",
     "generate": "yarn foundry:generate",
-    "postinstall": "husky install",
+    "postinstall": "husky install && patch-package",
     "ipfs": "yarn workspace @se-2/nextjs ipfs",
     "lint": "yarn next:lint && yarn foundry:lint",
     "next:build": "yarn workspace @se-2/nextjs build",
@@ -51,7 +51,8 @@
   },
   "devDependencies": {
     "husky": "~9.1.6",
-    "lint-staged": "~13.2.2"
+    "lint-staged": "~13.2.2",
+    "patch-package": "^8.0.1"
   },
   "packageManager": "yarn@4.13.0",
   "engines": {
